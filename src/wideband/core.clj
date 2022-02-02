@@ -1,14 +1,9 @@
 (ns wideband.core
+  (:gen-class)
   (:require [helins.linux.gpio :as gpio]))
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
-
-
-
-(with-open [device (gpio/device "/dev/gpiochip0")
+(defn run []
+  (with-open [device (gpio/device "/dev/gpiochip0")
             led-handle (gpio/handle device
                                     {5 {:gpio/state false
                                         :gpio/tag :led1}
@@ -36,4 +31,12 @@
           (println "AFTER EVENT<<==")
           (Thread/sleep 200)
           (println "recycling")
-          (recur (dec counter) (rest leds)))))))
+          (recur (dec counter) (rest leds))))))))
+
+(defn -main [& args]
+  (println "Starting up GPIO test")
+  (run))
+
+
+
+
