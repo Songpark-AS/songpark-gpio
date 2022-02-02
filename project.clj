@@ -6,4 +6,6 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [io.helins/linux.gpio "2.0.1"]]
   :repl-options {:init-ns wideband.core}
-  :main wideband.core)
+  :main wideband.core
+  :profiles {:uberjar {:aot :all
+                       :uberjar-name "wideband.jar"}})
