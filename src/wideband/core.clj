@@ -2,12 +2,32 @@
   (:gen-class)
   (:require [helins.linux.gpio :as gpio]))
 
+(defn run-plus []
+  (with-open [device         (gpio/device "/dev/gpiochip0")
+            led-handle     (gpio/handle device
+                                        {11 {:gpio/state false
+                                             :gpio/tag   :led-1}
+                                         8 {:gpio/state true
+                                             :gpio/tag   :led-2}}
+                                        {:gpio/direction :output})
+            button-watcher (gpio/watcher device
+                                         {10 {:gpio/direction :input}})]
+  (let [buffer (gpio/buffer led-handle)]
+    (loop [leds (cycle [:led-1
+                        :led-2])]
+      (gpio/write led-handle
+                  (gpio/set-line+ buffer
+                                  {(first  leds) true
+                                   (second leds) false}))
+      (gpio/event button-watcher)
+      (recur (rest leds))))))
+
 (defn run []
   (with-open [device (gpio/device "/dev/gpiochip0")
             led-handle (gpio/handle device
-                                    {5 {:gpio/state false
+                                    {10 {:gpio/state false
                                         :gpio/tag :led1}
-                                     12 {:gpio/state false
+                                     8 {:gpio/state false
                                          :gpio/tag :led2}}
                                     {:gpio/direction :output})
             button-watcher (gpio/watcher device
@@ -35,7 +55,7 @@
 
 (defn -main [& args]
   (println "Starting up GPIO test")
-  (run))
+  (run-plus))
 
 
 
