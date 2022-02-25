@@ -15,7 +15,7 @@
                        (concat (repeat ov-under 0) bits))
       (< ov-under 0) (do
                        (drop (* ov-under -1) bits))
-      :else bits)))
+      :else bits))) ;; Add exception for bits over limits
 
 (defn get-data-address-bits
   "creates the bits portion, returns 6 bits for address and 8 for data"
@@ -38,7 +38,7 @@
   [register data]
   (with-open [device (gpio/device "/dev/gpiochip0")
               fpga-handle (gpio/handle device
-                                       {8 {:gpio/state false
+                                       {8 {:gpio/state true
                                            :gpio/tag :chip-select}
                                         11 {:gpio/state false
                                             :gpio/tag :clock}
@@ -46,73 +46,25 @@
                                            :gpio/tag :data-in}}
                                        {:gpio/direction :input})]
     (let [buffer (gpio/buffer fpga-handle)]
+      (gpio/write fpga-handle
+                  (gpio/set-line+ buffer {:chip-select false}))
+      (Thread/sleep 1)
       (doseq [bit (generate-cmd-str "write" register data)]
-        #_{:clj-kondo/ignore [:redundant-do]}
-        (do
-          (gpio/write fpga-handle
-                      (gpio/set-line+ buffer {:chip-select false
-                                              :clock false
-                                              :data-in bit}))
-          (gpio/write fpga-handle
-                      (gpio/set-line+ buffer {:chip-select false
-                                              :clock true
-                                              :data-in bit}))
-          (gpio/write fpga-handle
-                      (gpio/set-line+ buffer {:chip-select false
-                                              :clock false
-                                              :data-in bit})))))))
+        (gpio/write fpga-handle
+                    (gpio/set-line+ buffer {:data-in bit}))
+        (Thread/sleep 1)
+        (gpio/write fpga-handle
+                    (gpio/set-line+ buffer {:clock true}))
+        (Thread/sleep 1)
+        (gpio/write fpga-handle
+                    (gpio/set-line+ buffer {:clock false}))
+        (Thread/sleep 1))
+      (gpio/write fpga-handle
+                  (gpio/set-line+ buffer {:chip-select true})))))
 
-(defn run-plus []
-  (with-open [device         (gpio/device "/dev/gpiochip0")
-              led-handle     (gpio/handle device
-                                          {11 {:gpio/state false
-                                               :gpio/tag   :led-1}
-                                           8 {:gpio/state true
-                                              :gpio/tag   :led-2}}
-                                          {:gpio/direction :output})
-              button-watcher (gpio/watcher device
-                                           {10 {:gpio/direction :input}})]
-    (let [buffer (gpio/buffer led-handle)]
-      (loop [leds (cycle [:led-1
-                          :led-2])]
-        (gpio/write led-handle
-                    (gpio/set-line+ buffer
-                                    {(first  leds) true
-                                     (second leds) false}))
-        (gpio/event button-watcher)
-        (recur (rest leds))))))
-
-(defn run []
-  (with-open [device (gpio/device "/dev/gpiochip0")
-              led-handle (gpio/handle device
-                                      {10 {:gpio/state false
-                                           :gpio/tag :led1}
-                                       8 {:gpio/state false
-                                          :gpio/tag :led2}}
-                                      {:gpio/direction :output})]
-    (let [buffer (gpio/buffer led-handle)]
-      (loop [counter 10
-             leds (cycle [:led1 :led2])]
-        (gpio/write led-handle
-                    (gpio/set-line+ buffer {(first leds) true
-                                            (second leds) false}))
-
-        (if (zero? counter)
-        ;; cleanup
-          (gpio/write led-handle
-                      (gpio/set-line+ buffer {(first leds) false
-                                              (second leds) false}))
-          (do
-            (println "==>>BEFORE EVENT")
-            ;; (println "event" (gpio/event button-watcher))
-            (println "AFTER EVENT<<==")
-            (Thread/sleep 200)
-            (println "recycling")
-            (recur (dec counter) (rest leds))))))))
 
 (defn -main [& args]
-  (println "Starting up GPIO test")
-  (run-plus))
+  (println "Starting up GPIO test"))
 
 
 
