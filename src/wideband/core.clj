@@ -29,9 +29,13 @@
 (defn generate-cmd-str
   "generates the Instruction that will be provided sent to FPGA"
   [op register value]
-  (if (= "read" op)
-    (concat [0 0] (get-data-address-bits register 6) (get-data-address-bits value 8))
-    (concat [0 1] (get-data-address-bits register 6) (get-data-address-bits value 8))))
+  (let [rw-bits (if (= :read op)
+                  [0 0]
+                  [0 1])
+        bits (concat rw-bits (get-data-address-bits register 6) (get-data-address-bits value 8))]
+    ;; once we have the bits, we need to convert them to true and false,
+    ;; as the GPIO library we use operates with booleans, and not 1 and 0
+    (map {0 false 1 true} bits)))
 
 (defn bit-bang
   "Function that will pass values over to the FPGA via bit banging"
@@ -42,25 +46,27 @@
                                            :gpio/tag :chip-select}
                                         11 {:gpio/state false
                                             :gpio/tag :clock}
-                                        9 {:gpio/state false
-                                           :gpio/tag :data-in}}
-                                       {:gpio/direction :input})]
-    (let [buffer (gpio/buffer fpga-handle)]
+                                        10 {:gpio/state false
+                                            :gpio/tag :data-in}}
+                                       {:gpio/direction :output})]
+    (let [buffer (gpio/buffer fpga-handle)
+          high true
+          low false]
       (gpio/write fpga-handle
-                  (gpio/set-line+ buffer {:chip-select false}))
+                  (gpio/set-line+ buffer {:chip-select low}))
       (Thread/sleep 1)
       (doseq [bit (generate-cmd-str "write" register data)]
         (gpio/write fpga-handle
                     (gpio/set-line+ buffer {:data-in bit}))
         (Thread/sleep 1)
         (gpio/write fpga-handle
-                    (gpio/set-line+ buffer {:clock true}))
+                    (gpio/set-line+ buffer {:clock high}))
         (Thread/sleep 1)
         (gpio/write fpga-handle
-                    (gpio/set-line+ buffer {:clock false}))
+                    (gpio/set-line+ buffer {:clock low}))
         (Thread/sleep 1))
       (gpio/write fpga-handle
-                  (gpio/set-line+ buffer {:chip-select true})))))
+                  (gpio/set-line+ buffer {:chip-select high})))))
 
 
 (defn -main [& args]
