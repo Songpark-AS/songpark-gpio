@@ -49,10 +49,12 @@
                                       11 {:gpio/state false
                                           :gpio/tag :clock}
                                       10 {:gpio/state false
-                                          :gpio/tag :data-in}
-                                      9 {:gpio/state false
-                                         :gpio/tag :data-out}}
-                                     {:gpio/direction :output})]
+                                          :gpio/tag :data-in}}
+                                     {:gpio/direction :output})
+              read-bits (gpio/handle device
+                                     {9 {:gpio/state false
+                                         :gpio/tag :data-out
+                                         :gpio/direction :input}})]
     (let [buffer (gpio/buffer fpga-read)
           high true
           low false]
@@ -62,18 +64,18 @@
       (doseq [bit (generate-cmd-str :read register 0)]
         (gpio/write fpga-read
                     (gpio/set-line+ buffer {:data-in bit}))
-        (gpio/read fpga-read
-                   (gpio/get-line buffer :data-out))
+        (print (gpio/read read-bits
+                          (gpio/get-line+ buffer :data-out)))
         (Thread/sleep 1)
         (gpio/write fpga-read
                     (gpio/set-line+ buffer {:clock high}))
-        (gpio/read fpga-read
-                   (gpio/get-line buffer :data-out))
+        (print (gpio/read read-bits
+                          (gpio/get-line+ buffer :data-out)))
         (Thread/sleep 1)
         (gpio/write fpga-read
                     (gpio/set-line+ buffer {:clock low}))
-        (gpio/read fpga-read
-                   (gpio/get-line buffer :data-out))
+        (print (gpio/read read-bits
+                          (gpio/get-line+ buffer :data-out)))
         (Thread/sleep 1))
       (gpio/write fpga-read
                   (gpio/set-line+ buffer {:chip-select high})))))
