@@ -43,42 +43,39 @@
   "Function that will pass and value to the FPGA and read the result"
   [register]
   (with-open [device (gpio/device "/dev/gpiochip0")
+              fpga-write (gpio/handle device
+                                      {8 {:gpio/state true
+                                          :gpio/tag :chip-select}
+                                       11 {:gpio/state false
+                                           :gpio/tag :clock}
+                                       10 {:gpio/state false
+                                           :gpio/tag :data-in}}
+                                      {:gpio/direction :output})
               fpga-read (gpio/handle device
-                                     {8 {:gpio/state true
-                                         :gpio/tag :chip-select}
-                                      11 {:gpio/state false
-                                          :gpio/tag :clock}
-                                      10 {:gpio/state false
-                                          :gpio/tag :data-in}}
-                                     {:gpio/direction :output})
-              read-bits (gpio/handle device
                                      {9 {:gpio/state false
                                          :gpio/tag :data-out
                                          :gpio/direction :input}})]
-    (let [buffer (gpio/buffer fpga-read)
+    (let [buffer-write (gpio/buffer fpga-write)
+          buffer-read  (gpio/buffer fpga-read)
           high true
           low false]
-      (gpio/write fpga-read
-                  (gpio/set-line+ buffer {:chip-select low}))
+      (gpio/write fpga-write
+                  (gpio/set-line+ buffer-write {:chip-select low}))
       (Thread/sleep 1)
       (doseq [bit (generate-cmd-str :read register 0)]
-        (gpio/write fpga-read
-                    (gpio/set-line+ buffer {:data-in bit}))
-        (print (gpio/read read-bits
-                          (gpio/get-line+ buffer :data-out)))
+        (gpio/write fpga-write
+                    (gpio/set-line+ buffer-write {:data-in bit}))
+        (print (gpio/read fpga-read
+                          (gpio/get-line+ buffer-read :data-out)))
         (Thread/sleep 1)
-        (gpio/write fpga-read
-                    (gpio/set-line+ buffer {:clock high}))
-        (print (gpio/read read-bits
-                          (gpio/get-line+ buffer :data-out)))
+        (gpio/write fpga-write
+                    (gpio/set-line+ buffer-write {:clock high}))
         (Thread/sleep 1)
-        (gpio/write fpga-read
-                    (gpio/set-line+ buffer {:clock low}))
-        (print (gpio/read read-bits
-                          (gpio/get-line+ buffer :data-out)))
+        (gpio/write fpga-write
+                    (gpio/set-line+ buffer-write {:clock low}))
         (Thread/sleep 1))
-      (gpio/write fpga-read
-                  (gpio/set-line+ buffer {:chip-select high})))))
+      (gpio/write fpga-write
+                  (gpio/set-line+ buffer-write {:chip-select high})))))
 
 (defn bit-bang
   "Function that will pass values over to the FPGA via bit banging"
