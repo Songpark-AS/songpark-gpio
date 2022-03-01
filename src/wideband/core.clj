@@ -1,6 +1,7 @@
 (ns wideband.core
   (:gen-class)
-  (:require [helins.linux.gpio :as gpio]))
+  (:require [helins.linux.gpio :as gpio])
+  (:import [java.lang AutoCloseable]))
 
 (defn convert-to-binary
   [value]
@@ -39,6 +40,10 @@
     ;; as the GPIO library we use operates with booleans, and not 1 and 0
     (map {0 false 1 true} bits)))
 
+(defn sleep [^Long delay]
+  (let [start ^Long (System/nanoTime)]
+    (while (> (+ start delay) (System/nanoTime)))))
+
 (defn bit-read
   "Function that will pass and value to the FPGA and read the result"
   [register]
@@ -54,43 +59,26 @@
               handle-read (gpio/handle device
                                      {9 {:gpio/state false
                                          :gpio/tag :data-out}}
-                                     {:gpio/direction :output})]
+                                     {:gpio/direction :input})]
     (let [buffer-write (gpio/buffer handle-write)
           buffer-read  (gpio/buffer handle-read)
           high true
           low false]
       (gpio/write handle-write
                   (gpio/set-line+ buffer-write {:chip-select low}))
-      (Thread/sleep 1)
+      (sleep 100)
       (doseq [bit (generate-cmd-str :read register 0)]
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:data-in bit}))
-        #_(print (gpio/read handle-read
-                            (gpio/get-line buffer-read :data-out)))
-        #_(gpio/write handle-read
-                    (gpio/set-line+ buffer-read {:data-out true}))
-        (Thread/sleep 1)
+        (gpio/read handle-read buffer-read)
+        (println (gpio/get-line buffer-read :data-out))
+        (sleep 100)
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:clock high}))
-        (Thread/sleep 1)
+        (sleep 100)
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:clock low}))
-        (Thread/sleep 1)
-
-        ;; will this run?
-        ;; (gpio/read handle-read buffer-read)
-        ;; (println (gpio/get-line buffer-read :data-out))
-        
-        ;; (println (gpio/read handle-read
-        ;;                     (gpio/get-line buffer-read :data-out)))
-        
-        )
-      (println {:buffer-read (type buffer-read)
-                :b buffer-read
-                :handle-read (type handle-read)})
-      #_
-      (let [h handle-read
-            b buffer-read])
+        (sleep 100))
       (gpio/write handle-write
                   (gpio/set-line+ buffer-write {:chip-select high})))))
 
@@ -111,24 +99,20 @@
           low false]
       (gpio/write fpga-handle
                   (gpio/set-line+ buffer {:chip-select low}))
-      (Thread/sleep 1)
+      (sleep 100)
       (doseq [bit (generate-cmd-str :write register data)]
         (gpio/write fpga-handle
                     (gpio/set-line+ buffer {:data-in bit}))
-        (Thread/sleep 1)
+        (sleep 100)
         (gpio/write fpga-handle
                     (gpio/set-line+ buffer {:clock high}))
-        (Thread/sleep 1)
+        (sleep 100)
         (gpio/write fpga-handle
                     (gpio/set-line+ buffer {:clock low}))
-        (Thread/sleep 1))
+        (sleep 100))
       (gpio/write fpga-handle
                   (gpio/set-line+ buffer {:chip-select high})))))
 
 
 (defn -main [& args]
   (println "Starting up GPIO test"))
-
-
-
-
