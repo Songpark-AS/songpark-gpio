@@ -78,8 +78,8 @@
         (Thread/sleep 1)
 
         ;; will this run?
-        (gpio/read handle-read buffer-read)
-        (println (gpio/get-line buffer-read :data-out))
+        ;; (gpio/read handle-read buffer-read)
+        ;; (println (gpio/get-line buffer-read :data-out))
         
         ;; (println (gpio/read handle-read
         ;;                     (gpio/get-line buffer-read :data-out)))
