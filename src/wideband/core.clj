@@ -39,6 +39,48 @@
     ;; as the GPIO library we use operates with booleans, and not 1 and 0
     (map {0 false 1 true} bits)))
 
+(defn bit-read
+  "Function that will pass and value to the FPGA and read the result"
+  [register]
+  (with-open [device (gpio/device "/dev/gpiochip0")
+              fpga-read (gpio/handle device
+                                     {8 {:gpio/state true
+                                         :gpio/tag :chip-select
+                                         :gpio/direction :output}
+                                      11 {:gpio/state false
+                                          :gpio/tag :clock
+                                          :gpio/direction :output}
+                                      10 {:gpio/state false
+                                          :gpio/tag :data-in
+                                          :gpio/direction :output}
+                                      9 {:gpio/state false
+                                         :gpio/tag :data-out
+                                         :gpio/direction :input}})]
+    (let [buffer (gpio/buffer fpga-read)
+          high true
+          low false]
+      (gpio/write fpga-read
+                  (gpio/set-line+ buffer {:chip-select low}))
+      (Thread/sleep 1)
+      (doseq [bit (generate-cmd-str :read register 0)]
+        (gpio/write fpga-read
+                    (gpio/set-line+ buffer {:data-in bit}))
+        (gpio/read fpga-read
+                   (gpio/get-line buffer :data-out))
+        (Thread/sleep 1)
+        (gpio/write fpga-read
+                    (gpio/set-line+ buffer {:clock high}))
+        (gpio/read fpga-read
+                   (gpio/get-line buffer :data-out))
+        (Thread/sleep 1)
+        (gpio/write fpga-read
+                    (gpio/set-line+ buffer {:clock low}))
+        (gpio/read fpga-read
+                   (gpio/get-line buffer :data-out))
+        (Thread/sleep 1))
+      (gpio/write fpga-read
+                  (gpio/set-line+ buffer {:chip-select high})))))
+
 (defn bit-bang
   "Function that will pass values over to the FPGA via bit banging"
   [register data]
