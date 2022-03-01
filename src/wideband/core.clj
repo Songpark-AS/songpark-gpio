@@ -45,17 +45,14 @@
   (with-open [device (gpio/device "/dev/gpiochip0")
               fpga-read (gpio/handle device
                                      {8 {:gpio/state true
-                                         :gpio/tag :chip-select
-                                         :gpio/direction :output}
+                                         :gpio/tag :chip-select}
                                       11 {:gpio/state false
-                                          :gpio/tag :clock
-                                          :gpio/direction :output}
+                                          :gpio/tag :clock}
                                       10 {:gpio/state false
-                                          :gpio/tag :data-in
-                                          :gpio/direction :output}
+                                          :gpio/tag :data-in}
                                       9 {:gpio/state false
-                                         :gpio/tag :data-out
-                                         :gpio/direction :input}})]
+                                         :gpio/tag :data-out}}
+                                     {:gpio/direction :output})]
     (let [buffer (gpio/buffer fpga-read)
           high true
           low false]
