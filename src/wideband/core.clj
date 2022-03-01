@@ -6,15 +6,17 @@
   [value]
   (map (comp {\1 1 \0 0} char) (Long/toString value 2)))
 
+(defn convert-from-binary
+  [value]
+  (Long/parseLong (str value) 2))
+
 (defn add-or-remove-bits
   "Adds or removes extra bits according to a bit limit"
   [bits limit]
   (let [ov-under (- limit (count bits))] ;; ov-under checks for how many bits are required to meet the limit
     (cond
-      (> ov-under 0) (do
-                       (concat (repeat ov-under 0) bits))
-      (< ov-under 0) (do
-                       (drop (* ov-under -1) bits))
+      (> ov-under 0) (concat (repeat ov-under 0) bits)
+      (< ov-under 0) (drop (* ov-under -1) bits)
       :else bits))) ;; Add exception for bits over limits
 
 (defn get-data-address-bits
