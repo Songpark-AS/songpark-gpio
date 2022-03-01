@@ -63,7 +63,9 @@
     (let [buffer-write (gpio/buffer handle-write)
           buffer-read  (gpio/buffer handle-read)
           high true
-          low false]
+          low false
+          out (atom [])
+          bits {false 0 true 1}]
       (gpio/write handle-write
                   (gpio/set-line+ buffer-write {:chip-select low}))
       (sleep 100)
@@ -71,7 +73,8 @@
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:data-in bit}))
         (gpio/read handle-read buffer-read)
-        (println (gpio/get-line buffer-read :data-out))
+        #_(println (gpio/get-line buffer-read :data-out))
+        (swap! out conj (get bits (gpio/get-line buffer-read :data-out)))
         (sleep 100)
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:clock high}))
@@ -80,9 +83,10 @@
                     (gpio/set-line+ buffer-write {:clock low}))
         (sleep 100))
       (gpio/write handle-write
-                  (gpio/set-line+ buffer-write {:chip-select high})))))
+                  (gpio/set-line+ buffer-write {:chip-select high}))
+      (drop 8 @out))))
 
-(defn bit-bang
+(defn bit-write
   "Function that will pass values over to the FPGA via bit banging"
   [register data]
   (with-open [device (gpio/device "/dev/gpiochip0")
