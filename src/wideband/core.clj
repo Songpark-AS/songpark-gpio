@@ -43,7 +43,7 @@
   "Function that will pass and value to the FPGA and read the result"
   [register]
   (with-open [device (gpio/device "/dev/gpiochip0")
-              fpga-write (gpio/handle device
+              handle-write (gpio/handle device
                                       {8 {:gpio/state true
                                           :gpio/tag :chip-select}
                                        11 {:gpio/state false
@@ -51,30 +51,47 @@
                                        10 {:gpio/state false
                                            :gpio/tag :data-in}}
                                       {:gpio/direction :output})
-              fpga-read (gpio/handle device
+              handle-read (gpio/handle device
                                      {9 {:gpio/state false
-                                         :gpio/tag :data-out
-                                         :gpio/direction :input}})]
-    (let [buffer-write (gpio/buffer fpga-write)
-          buffer-read  (gpio/buffer fpga-read)
+                                         :gpio/tag :data-out}}
+                                     {:gpio/direction :output})]
+    (let [buffer-write (gpio/buffer handle-write)
+          buffer-read  (gpio/buffer handle-read)
           high true
           low false]
-      (gpio/write fpga-write
+      (gpio/write handle-write
                   (gpio/set-line+ buffer-write {:chip-select low}))
       (Thread/sleep 1)
       (doseq [bit (generate-cmd-str :read register 0)]
-        (gpio/write fpga-write
+        (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:data-in bit}))
-        (print (gpio/read fpga-read
-                          (gpio/get-line+ buffer-read :data-out)))
+        #_(print (gpio/read handle-read
+                            (gpio/get-line buffer-read :data-out)))
+        #_(gpio/write handle-read
+                    (gpio/set-line+ buffer-read {:data-out true}))
         (Thread/sleep 1)
-        (gpio/write fpga-write
+        (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:clock high}))
         (Thread/sleep 1)
-        (gpio/write fpga-write
+        (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:clock low}))
-        (Thread/sleep 1))
-      (gpio/write fpga-write
+        (Thread/sleep 1)
+
+        ;; will this run?
+        (gpio/read handle-read buffer-read)
+        (println (gpio/get-line buffer-read :data-out))
+        
+        ;; (println (gpio/read handle-read
+        ;;                     (gpio/get-line buffer-read :data-out)))
+        
+        )
+      (println {:buffer-read (type buffer-read)
+                :b buffer-read
+                :handle-read (type handle-read)})
+      #_
+      (let [h handle-read
+            b buffer-read])
+      (gpio/write handle-write
                   (gpio/set-line+ buffer-write {:chip-select high})))))
 
 (defn bit-bang
@@ -95,7 +112,7 @@
       (gpio/write fpga-handle
                   (gpio/set-line+ buffer {:chip-select low}))
       (Thread/sleep 1)
-      (doseq [bit (generate-cmd-str "write" register data)]
+      (doseq [bit (generate-cmd-str :write register data)]
         (gpio/write fpga-handle
                     (gpio/set-line+ buffer {:data-in bit}))
         (Thread/sleep 1)
