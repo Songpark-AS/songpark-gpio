@@ -1,11 +1,8 @@
-(defproject wideband "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
-            :url "https://www.eclipse.org/legal/epl-2.0/"}
+(defproject songpark/bitbang "1.0.0-SNAPSHOT"
+  :description "Bit Bang implementation for Songpark"
+  :url ""
+  :license {:name ""
+            :url ""}
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [io.helins/linux.gpio "2.0.1"]]
-  :repl-options {:init-ns wideband.core}
-  :main wideband.core
-  :profiles {:uberjar {:aot :all
-                       :uberjar-name "wideband.jar"}})
+  :repl-options {:init-ns songpark.bitbang})

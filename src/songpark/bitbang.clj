@@ -1,5 +1,4 @@
-(ns wideband.core
-  (:gen-class)
+(ns songpark.bitbang
   (:require [helins.linux.gpio :as gpio])
   (:import [java.lang AutoCloseable]))
 
@@ -9,7 +8,7 @@
 
 (defn convert-from-binary
   [value]
-  (Long/parseLong (str value) 2))
+  (Long/parseLong (clojure.string/join value) 2))
 
 (defn add-or-remove-bits
   "Adds or removes extra bits according to a bit limit"
@@ -49,17 +48,17 @@
   [register]
   (with-open [device (gpio/device "/dev/gpiochip0")
               handle-write (gpio/handle device
-                                      {8 {:gpio/state true
-                                          :gpio/tag :chip-select}
-                                       11 {:gpio/state false
-                                           :gpio/tag :clock}
-                                       10 {:gpio/state false
-                                           :gpio/tag :data-in}}
-                                      {:gpio/direction :output})
+                                        {8 {:gpio/state true ;; [chip-select, clock, data-in, data-out] make pins configurable 
+                                            :gpio/tag :chip-select}
+                                         11 {:gpio/state false
+                                             :gpio/tag :clock}
+                                         10 {:gpio/state false
+                                             :gpio/tag :data-in}}
+                                        {:gpio/direction :output})
               handle-read (gpio/handle device
-                                     {9 {:gpio/state false
-                                         :gpio/tag :data-out}}
-                                     {:gpio/direction :input})]
+                                       {9 {:gpio/state false
+                                           :gpio/tag :data-out}}
+                                       {:gpio/direction :input})]
     (let [buffer-write (gpio/buffer handle-write)
           buffer-read  (gpio/buffer handle-read)
           high true
@@ -117,6 +116,3 @@
       (gpio/write fpga-handle
                   (gpio/set-line+ buffer {:chip-select high})))))
 
-
-(defn -main [& args]
-  (println "Starting up GPIO test"))
