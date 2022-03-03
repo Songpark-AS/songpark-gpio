@@ -13,11 +13,17 @@
 (defn add-or-remove-bits
   "Adds or removes extra bits according to a bit limit"
   [bits limit]
-  (let [ov-under (- limit (count bits))] ;; ov-under checks for how many bits are required to meet the limit
+  (let [num (count bits)
+        ov-under (- limit (count bits))]
     (cond
-      (> ov-under 0) (concat (repeat ov-under 0) bits)
-      (< ov-under 0) (drop (* ov-under -1) bits)
-      :else bits))) ;; Add exception for bits over limits
+      (= limit 8) (cond ;; Data shou
+                    (> num limit) (throw (AssertionError. "Data value is out of range"))
+                    (< num limit) (concat (repeat ov-under 0) bits)
+                    :else bits)
+      (= limit 6) (cond
+                    (> num limit) (drop (* ov-under -1) bits)
+                    (< num limit) (concat (repeat ov-under 0) bits)
+                    :else bits)))) ;; Add exception for bits over limits
 
 (defn get-data-address-bits
   "creates the bits portion, returns 6 bits for address and 8 for data"
@@ -43,21 +49,21 @@
   (let [start ^Long (System/nanoTime)]
     (while (> (+ start delay) (System/nanoTime)))))
 
-(defn bit-read
+(defn bit-reader
   "Function that will pass and value to the FPGA and read the result"
-  [register]
+  [register cs clk d-in d-out]
   (with-open [device (gpio/device "/dev/gpiochip0")
               handle-write (gpio/handle device
-                                        {8 {:gpio/state true ;; [chip-select, clock, data-in, data-out] make pins configurable 
-                                            :gpio/tag :chip-select}
-                                         11 {:gpio/state false
-                                             :gpio/tag :clock}
-                                         10 {:gpio/state false
-                                             :gpio/tag :data-in}}
+                                        {cs {:gpio/state true ;; [chip-select, clock, data-in, data-out] make pins configurable 
+                                             :gpio/tag :chip-select}
+                                         clk {:gpio/state false
+                                              :gpio/tag :clock}
+                                         d-in {:gpio/state false
+                                               :gpio/tag :data-in}}
                                         {:gpio/direction :output})
               handle-read (gpio/handle device
-                                       {9 {:gpio/state false
-                                           :gpio/tag :data-out}}
+                                       {d-out {:gpio/state false
+                                               :gpio/tag :data-out}}
                                        {:gpio/direction :input})]
     (let [buffer-write (gpio/buffer handle-write)
           buffer-read  (gpio/buffer handle-read)
@@ -72,7 +78,6 @@
         (gpio/write handle-write
                     (gpio/set-line+ buffer-write {:data-in bit}))
         (gpio/read handle-read buffer-read)
-        #_(println (gpio/get-line buffer-read :data-out))
         (swap! out conj (get bits (gpio/get-line buffer-read :data-out)))
         (sleep 100)
         (gpio/write handle-write
@@ -85,17 +90,22 @@
                   (gpio/set-line+ buffer-write {:chip-select high}))
       (drop 8 @out))))
 
+(defn bit-read
+  "Function that will return the FPGA value as decimal it uses bit reader"
+  [register chip-select clock data-in data-out]
+  (convert-from-binary (bit-reader register chip-select clock data-in data-out)))
+
 (defn bit-write
   "Function that will pass values over to the FPGA via bit banging"
-  [register data]
+  [register data cs clk d-in]
   (with-open [device (gpio/device "/dev/gpiochip0")
               fpga-handle (gpio/handle device
-                                       {8 {:gpio/state true
-                                           :gpio/tag :chip-select}
-                                        11 {:gpio/state false
-                                            :gpio/tag :clock}
-                                        10 {:gpio/state false
-                                            :gpio/tag :data-in}}
+                                       {cs {:gpio/state true
+                                            :gpio/tag :chip-select}
+                                        clk {:gpio/state false
+                                             :gpio/tag :clock}
+                                        d-in {:gpio/state false
+                                              :gpio/tag :data-in}}
                                        {:gpio/direction :output})]
     (let [buffer (gpio/buffer fpga-handle)
           high true
