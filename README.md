@@ -19,11 +19,17 @@ the master line for sending data to the devices
 ## Usage
 
 ###### Writing
+
+![image info](./doc/img/SPI-WRITE.jpg)
+
 ```clojure
 (bit-write register data chip-select clock data-in)
 ```
 Accepts Decimal and Hexadecimal values as input to write data to a specific register on the FPGA. It requires the pins to be provided before usage.
 ###### Reading
+
+![image info](./doc/img/SPI-READ.jpg)
+
 ```clojure
 (bit-read register chip-select clock data-in data-out)
 ```
